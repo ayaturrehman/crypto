@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trading Simulation</title>
+    <style>
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        table, th, td {
+            border: 1px solid black;
+        }
+        th, td {
+            padding: 8px;
+            text-align: center;
+        }
+        .input-group {
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Trading Simulation</h1>
+    <div>
+        <div class="input-group">
+            <label for="initialCapital">Initial Capital: </label>
+            <input type="number" id="initialCapital" value="20">
+        </div>
+        <div class="input-group">
+            <label for="targetCapital">Target Capital: </label>
+            <input type="number" id="targetCapital" value="100">
+        </div>
+        <div class="input-group">
+            <label for="investmentPercentage">Investment Percentage: </label>
+            <input type="number" step="0.01" id="investmentPercentage" value="0.15">
+        </div>
+        <div class="input-group">
+            <label for="profitPercentage">Profit Percentage: </label>
+            <input type="number" step="0.01" id="profitPercentage" value="0.02">
+        </div>
+        <div class="input-group">
+            <label for="stopLossPercentage">Stop Loss Percentage: </label>
+            <input type="number" step="0.01" id="stopLossPercentage" value="0.01">
+        </div>
+        <div class="input-group">
+            <label for="leverage">Leverage: </label>
+            <input type="number" step="0.1" id="leverage" value="20">
+        </div>
+        <div class="input-group">
+            <label for="tradingDays">Trading Days: </label>
+            <input type="number" id="tradingDays" value="30">
+        </div>
+        <button onclick="runSimulation()">Run Simulation</button>
+    </div>
+    <h2>Results</h2>
+    <table id="resultsTable">
+        <thead>
+            <tr>
+                <th>Day</th>
+                <th>Trade</th>
+                <th>Result</th>
+                <th>Investment</th>
+                <th>Profit/Loss</th>
+                <th>New Capital</th>
+                <th>Net Profit/Loss</th>
+            </tr>
+        </thead>
+        <tbody>
+        </tbody>
+    </table>
+
+    <script>
+        function simulateTrading(initialCapital, targetCapital, investmentPercentage, profitPercentage, winLossPattern, stopLossPercentage, leverage, tradingDays) {
+            let currentCapital = initialCapital;
+            let days = 0;
+            let capitalProgression = [];
+
+            function performTrades(currentCapital) {
+                let dailyLog = [];
+                let startCapital = currentCapital;
+                for (let result of winLossPattern) {
+                    let investment = currentCapital * investmentPercentage;
+                    let leveragedInvestment = investment * leverage;
+                    if (result === 'win') {
+                        let profit = leveragedInvestment * profitPercentage;
+                        currentCapital += profit; // Adding the profit directly
+                        dailyLog.push({ type: 'win', investment: investment.toFixed(2), profit: profit.toFixed(2), newCapital: currentCapital.toFixed(2) });
+                    } else { // result === 'loss'
+                        let stopLoss = leveragedInvestment * stopLossPercentage;
+                        currentCapital -= stopLoss; // Subtracting the loss directly
+                        dailyLog.push({ type: 'loss', investment: investment.toFixed(2), loss: stopLoss.toFixed(2), newCapital: currentCapital.toFixed(2) });
+                    }
+                }
+                let netProfitLoss = currentCapital - startCapital;
+                return { newCapital: currentCapital, dailyLog: dailyLog, netProfitLoss: netProfitLoss.toFixed(2) };
+            }
+
+            while (currentCapital < targetCapital && days < tradingDays) {
+                let tradeResult = performTrades(currentCapital);
+                currentCapital = tradeResult.newCapital;
+                capitalProgression.push({ day: days, capital: currentCapital, dailyLog: tradeResult.dailyLog, netProfitLoss: tradeResult.netProfitLoss });
+                days++;
+            }
+
+            capitalProgression.push({ day: days, capital: currentCapital, dailyLog: [], netProfitLoss: 0 });
+            return capitalProgression;
+        }
+
+        function runSimulation() {
+            const initialCapital = parseFloat(document.getElementById('initialCapital').value);
+            const targetCapital = parseFloat(document.getElementById('targetCapital').value);
+            const investmentPercentage = parseFloat(document.getElementById('investmentPercentage').value);
+            const profitPercentage = parseFloat(document.getElementById('profitPercentage').value);
+            const stopLossPercentage = parseFloat(document.getElementById('stopLossPercentage').value);
+            const leverage = parseFloat(document.getElementById('leverage').value);
+            const tradingDays = parseInt(document.getElementById('tradingDays').value);
+
+            const winLossPattern = ['win', 'win', 'loss']; // win, win, loss pattern
+
+            // Run simulation
+            let result = simulateTrading(initialCapital, targetCapital, investmentPercentage, profitPercentage, winLossPattern, stopLossPercentage, leverage, tradingDays);
+
+            // Display results in table
+            const tableBody = document.getElementById('resultsTable').querySelector('tbody');
+            tableBody.innerHTML = ''; // Clear previous results
+
+            result.forEach(entry => {
+                entry.dailyLog.forEach((log, index) => {
+                    let row = document.createElement('tr');
+                    if (index === 0) {
+                        let dayCell = document.createElement('td');
+                        dayCell.rowSpan = entry.dailyLog.length;
+                        dayCell.innerText = entry.day;
+                        row.appendChild(dayCell);
+                    }
+                    let tradeCell = document.createElement('td');
+                    tradeCell.innerText = index + 1;
+                    row.appendChild(tradeCell);
+
+                    let resultCell = document.createElement('td');
+                    resultCell.innerText = log.type.toUpperCase();
+                    row.appendChild(resultCell);
+
+                    let investmentCell = document.createElement('td');
+                    investmentCell.innerText = `$${log.investment}`;
+                    row.appendChild(investmentCell);
+
+                    let profitLossCell = document.createElement('td');
+                    profitLossCell.innerText = log.type === 'win' ? `$${log.profit}` : `-$${log.loss}`;
+                    row.appendChild(profitLossCell);
+
+                    let newCapitalCell = document.createElement('td');
+                    newCapitalCell.innerText = `$${log.newCapital}`;
+                    row.appendChild(newCapitalCell);
+
+                    if (index === 0) {
+                        let netProfitLossCell = document.createElement('td');
+                        netProfitLossCell.rowSpan = entry.dailyLog.length;
+                        netProfitLossCell.innerText = `$${entry.netProfitLoss}`;
+                        row.appendChild(netProfitLossCell);
+                    }
+
+                    tableBody.appendChild(row);
+                });
+                let endOfDayRow = document.createElement('tr');
+                endOfDayRow.innerHTML = `<td colspan="7"><strong>End of Day Capital: $${entry.capital.toFixed(2)}</strong></td>`;
+                tableBody.appendChild(endOfDayRow);
+            });
+        }
+    </script>
+</body>
+</html>
